@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { font-family: Inter, system-ui, -apple-system, sans-serif; }
+
+.kpi-card { @apply rounded-xl bg-white border border-slate-200 p-4 shadow-sm; }
+.kpi-label { @apply text-xs font-medium uppercase tracking-wide text-slate-500; }
+.kpi-value { @apply text-2xl font-semibold text-slate-900; }
+.badge { @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium; }
+.badge-green { @apply bg-emerald-100 text-emerald-800; }
+.badge-yellow { @apply bg-amber-100 text-amber-800; }
+.badge-red { @apply bg-rose-100 text-rose-800; }
+.badge-blue { @apply bg-sky-100 text-sky-800; }
+.badge-slate { @apply bg-slate-100 text-slate-700; }
+.badge-purple { @apply bg-violet-100 text-violet-800; }

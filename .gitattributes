@@ -1,0 +1,18 @@
+# Force LF on shell scripts and Python regardless of git autocrlf settings.
+# CRLF in a bash script makes macOS/Linux explode with cryptic
+# "command not found" or "bad interpreter" errors.
+*.sh   text eol=lf
+*.py   text eol=lf
+*.sql  text eol=lf
+
+# Keep PowerShell as CRLF on Windows.
+*.ps1  text eol=crlf
+
+# Web sources keep LF for cross-OS consistency.
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf

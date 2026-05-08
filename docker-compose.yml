@@ -1,0 +1,68 @@
+name: kamuit-admin
+
+# Named volumes (instead of bind mounts) so `docker compose down -v` actually
+# wipes DB state. Bind mounts to ./pg-data-* survive -v and caused pain.
+
+services:
+  db-user-mgmt:
+    # Plain Postgres (no PostGIS). user-management-backend has NO geo columns,
+    # but one of its migrations (d1216f7e9954) runs `DROP TABLE spatial_ref_sys`
+    # as an autogen artifact. We pre-create a dummy spatial_ref_sys in
+    # scripts/migrate.py so the drop succeeds cleanly on a plain Postgres.
+    image: postgres:15
+    container_name: kamuit-admin-db-user-mgmt
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${LOCAL_PG_USER:-kamuit_admin}
+      POSTGRES_PASSWORD: ${LOCAL_PG_PASSWORD:-local_dev_only}
+      POSTGRES_DB: ${USER_MGMT_DB_NAME:-kamuit_user_management}
+    ports:
+      - "${USER_MGMT_DB_PORT:-54321}:5432"
+    volumes:
+      - pg_user_mgmt:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOCAL_PG_USER:-kamuit_admin} -d ${USER_MGMT_DB_NAME:-kamuit_user_management}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  db-kamuit:
+    image: postgis/postgis:15-3.4
+    container_name: kamuit-admin-db-kamuit
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${LOCAL_PG_USER:-kamuit_admin}
+      POSTGRES_PASSWORD: ${LOCAL_PG_PASSWORD:-local_dev_only}
+      POSTGRES_DB: ${KAMUIT_DB_NAME:-kamuit_backend}
+    ports:
+      - "${KAMUIT_DB_PORT:-54322}:5432"
+    volumes:
+      - pg_kamuit:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOCAL_PG_USER:-kamuit_admin} -d ${KAMUIT_DB_NAME:-kamuit_backend}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  db-payment:
+    image: postgres:15
+    container_name: kamuit-admin-db-payment
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${LOCAL_PG_USER:-kamuit_admin}
+      POSTGRES_PASSWORD: ${LOCAL_PG_PASSWORD:-local_dev_only}
+      POSTGRES_DB: ${PAYMENT_DB_NAME:-kamuit_payment}
+    ports:
+      - "${PAYMENT_DB_PORT:-54323}:5432"
+    volumes:
+      - pg_payment:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOCAL_PG_USER:-kamuit_admin} -d ${PAYMENT_DB_NAME:-kamuit_payment}"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pg_user_mgmt:
+  pg_kamuit:
+  pg_payment:
