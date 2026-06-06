@@ -47,29 +47,35 @@ bold "==> Doctor: database row counts"
 # aborting the whole doctor run.
 set +e
 "$BOOT_PY" - <<'PY'
-import asyncio, sys
+import asyncio, os, sys
+from pathlib import Path
 import asyncpg
+from dotenv import load_dotenv
 
-# (label, dsn, sql, minimum)
+load_dotenv(Path(__file__).resolve().parent / ".env" if "__file__" in dir() else Path.cwd() / ".env")
+
+def _dsn(prefix):
+    host = os.environ.get(f"{prefix}_DB_HOST", "localhost")
+    port = os.environ.get(f"{prefix}_DB_PORT", "5432")
+    name = os.environ.get(f"{prefix}_DB_NAME", "")
+    user = os.environ.get(f"{prefix}_DB_USER") or os.environ.get("LOCAL_PG_USER", "kamuit_admin")
+    pw   = os.environ.get(f"{prefix}_DB_PASSWORD") or os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only")
+    return f"postgresql://{user}:{pw}@{host}:{port}/{name}"
+
+um = _dsn("USER_MGMT")
+ka = _dsn("KAMUIT")
+pa = _dsn("PAYMENT")
+
 checks = [
-    ("user-mgmt.users",                       "postgresql://kamuit_admin:local_dev_only@localhost:54321/kamuit_user_management",
-     "SELECT count(*) FROM users",                                  10),
-    ("kamuit.driver_runs",                    "postgresql://kamuit_admin:local_dev_only@localhost:54322/kamuit_backend",
-     "SELECT count(*) FROM driver_runs",                            5),
-    ("kamuit.rides",                          "postgresql://kamuit_admin:local_dev_only@localhost:54322/kamuit_backend",
-     "SELECT count(*) FROM rides",                                  5),
-    ("kamuit.ride_status_events  (extension)","postgresql://kamuit_admin:local_dev_only@localhost:54322/kamuit_backend",
-     "SELECT count(*) FROM ride_status_events",                     5),
-    ("kamuit.driver_location_pings (extension)","postgresql://kamuit_admin:local_dev_only@localhost:54322/kamuit_backend",
-     "SELECT count(*) FROM driver_location_pings",                  20),
-    ("kamuit.driver_online_sessions (extension)","postgresql://kamuit_admin:local_dev_only@localhost:54322/kamuit_backend",
-     "SELECT count(*) FROM driver_online_sessions",                 1),
-    ("kamuit.ride_geo_cache (extension)",     "postgresql://kamuit_admin:local_dev_only@localhost:54322/kamuit_backend",
-     "SELECT count(*) FROM ride_geo_cache",                         1),
-    ("payment.wallet_transactions",           "postgresql://kamuit_admin:local_dev_only@localhost:54323/kamuit_payment",
-     "SELECT count(*) FROM wallet_transactions",                    1),
-    ("payment.v_driver_settlement (extension)","postgresql://kamuit_admin:local_dev_only@localhost:54323/kamuit_payment",
-     "SELECT count(*) FROM v_driver_settlement",                    1),
+    ("user-mgmt.users",                        um, "SELECT count(*) FROM users",                  10),
+    ("kamuit.driver_runs",                      ka, "SELECT count(*) FROM driver_runs",            5),
+    ("kamuit.rides",                            ka, "SELECT count(*) FROM rides",                  5),
+    ("kamuit.ride_status_events  (extension)",  ka, "SELECT count(*) FROM ride_status_events",     5),
+    ("kamuit.driver_location_pings (extension)",ka, "SELECT count(*) FROM driver_location_pings",  20),
+    ("kamuit.driver_online_sessions (extension)",ka,"SELECT count(*) FROM driver_online_sessions", 1),
+    ("kamuit.ride_geo_cache (extension)",       ka, "SELECT count(*) FROM ride_geo_cache",         1),
+    ("payment.wallet_transactions",            pa, "SELECT count(*) FROM wallet_transactions",     1),
+    ("payment.v_driver_settlement (extension)",pa, "SELECT count(*) FROM v_driver_settlement",     1),
 ]
 
 GREEN = "\033[32m"; RED = "\033[31m"; END = "\033[0m"

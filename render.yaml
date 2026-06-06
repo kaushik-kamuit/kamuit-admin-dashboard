@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: kamuit-admin-api
+    runtime: python
+    region: oregon
+    rootDir: kamuit-admin-dashboard/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: DB_SSLMODE
+        value: require
+      - key: ENABLE_DOCS
+        value: "false"
+      - key: ADMIN_API_HOST
+        value: "0.0.0.0"
+      # Set these in the Render dashboard (secrets):
+      # USER_MGMT_DB_HOST, USER_MGMT_DB_PORT, USER_MGMT_DB_NAME, USER_MGMT_DB_USER, USER_MGMT_DB_PASSWORD
+      # KAMUIT_DB_HOST, KAMUIT_DB_PORT, KAMUIT_DB_NAME, KAMUIT_DB_USER, KAMUIT_DB_PASSWORD
+      # PAYMENT_DB_HOST, PAYMENT_DB_PORT, PAYMENT_DB_NAME, PAYMENT_DB_USER, PAYMENT_DB_PASSWORD
+      # ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_JWT_SECRET
+      # CORS_EXTRA_ORIGINS

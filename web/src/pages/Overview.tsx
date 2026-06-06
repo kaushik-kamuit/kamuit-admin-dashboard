@@ -71,7 +71,7 @@ export default function Overview() {
               <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="completed" stackId="a" fill="#059669" />
+              <Bar dataKey="completed" stackId="a" fill="#0BA26D" />
               <Bar dataKey="cancelled" stackId="a" fill="#e11d48" />
             </BarChart>
           </ResponsiveContainer>

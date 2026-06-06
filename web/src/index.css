@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 html, body, #root { height: 100%; }
-body { font-family: Inter, system-ui, -apple-system, sans-serif; }
+body { font-family: Poppins, Inter, system-ui, -apple-system, sans-serif; }
 
 .kpi-card { @apply rounded-xl bg-white border border-slate-200 p-4 shadow-sm; }
 .kpi-label { @apply text-xs font-medium uppercase tracking-wide text-slate-500; }
@@ -15,3 +15,221 @@ body { font-family: Inter, system-ui, -apple-system, sans-serif; }
 .badge-blue { @apply bg-sky-100 text-sky-800; }
 .badge-slate { @apply bg-slate-100 text-slate-700; }
 .badge-purple { @apply bg-violet-100 text-violet-800; }
+
+.operations-page { @apply space-y-6 text-slate-950; }
+.operations-header { @apply flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between; }
+.operations-header h1 { @apply mt-1 text-3xl font-semibold tracking-tight text-slate-950; }
+.operations-kicker { @apply text-xs font-semibold uppercase tracking-[0.22em] text-[#0BA26D]; }
+.operations-subtitle { @apply mt-2 max-w-2xl text-sm leading-6 text-slate-600; }
+.operations-freshness { @apply flex min-w-52 flex-col gap-1 rounded border border-slate-200 bg-white px-4 py-3 text-sm; }
+.operations-freshness span { @apply text-xs uppercase tracking-wide text-slate-500; }
+.operations-freshness strong { @apply font-medium text-slate-950; }
+.operations-empty,
+.operations-error { @apply rounded border border-slate-200 bg-white p-6 text-sm text-slate-600; }
+.operations-error { @apply border-rose-200 text-rose-700; }
+
+.priority-strip { @apply grid grid-cols-2 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200 md:grid-cols-3 xl:grid-cols-6; }
+.priority-item { @apply flex min-h-24 flex-col justify-between bg-white p-4 transition-colors hover:bg-slate-50; }
+.priority-item span { @apply text-xs font-medium uppercase tracking-wide text-slate-500; }
+.priority-item strong { @apply text-2xl font-semibold tracking-tight text-slate-950; }
+.priority-item.tone-rose strong { @apply text-rose-700; }
+.priority-item.tone-amber strong { @apply text-amber-700; }
+.priority-item.tone-blue strong { @apply text-sky-700; }
+.priority-item.tone-green strong { @apply text-[#0BA26D]; }
+.priority-item.tone-slate strong { @apply text-slate-900; }
+
+.ops-search { @apply rounded border border-slate-200 bg-white p-4; }
+.ops-search > div:first-child { @apply flex flex-col gap-2 md:flex-row md:items-center; }
+.ops-search span { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+.ops-search input { @apply min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950; }
+.ops-search-results { @apply mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4; }
+.ops-search-results a { @apply rounded border border-slate-200 px-3 py-2 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50; }
+.ops-search-results strong { @apply mr-2 text-[11px] uppercase tracking-wide text-[#0BA26D]; }
+.ops-search-results span { @apply text-sm font-medium normal-case tracking-normal text-slate-950; }
+.ops-search-results small { @apply mt-1 block truncate text-xs text-slate-500; }
+.search-empty { @apply text-sm normal-case tracking-normal text-slate-500; }
+
+.viz-grid { @apply grid grid-cols-1 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200 md:grid-cols-2 xl:grid-cols-4; }
+.viz-panel { @apply bg-white p-4; }
+.viz-panel h2 { @apply mb-3 text-base font-semibold text-slate-950; }
+.viz-row { @apply mb-3 last:mb-0; }
+.viz-row > div:first-child { @apply mb-1 flex items-center justify-between text-sm; }
+.viz-row span { @apply text-slate-600; }
+.viz-row strong { @apply tabular-nums text-slate-950; }
+.viz-track { @apply h-2 overflow-hidden rounded bg-slate-100; }
+.viz-track i { @apply block h-full rounded; }
+.bar-emerald { @apply bg-[#0BA26D]; }
+.bar-amber { @apply bg-amber-500; }
+.bar-rose { @apply bg-rose-600; }
+.bar-slate { @apply bg-slate-500; }
+.bar-sky { @apply bg-sky-600; }
+.bar-violet { @apply bg-violet-600; }
+
+.ops-grid { @apply grid grid-cols-1 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200 lg:grid-cols-2 xl:grid-cols-4; }
+.ops-panel { @apply bg-white p-4; }
+.ops-panel-flush { @apply p-0; }
+.ops-panel-flush .ops-panel-head { @apply px-4 pt-4; }
+.ops-panel-head { @apply mb-3; }
+.ops-panel-head span { @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500; }
+.ops-panel-head h2 { @apply mt-1 text-base font-semibold text-slate-950; }
+.metric-row { @apply flex items-center justify-between gap-4 border-t border-slate-100 py-2 text-sm; }
+.metric-row:first-of-type { @apply border-t-0; }
+.metric-row span { @apply text-slate-600; }
+.metric-row strong { @apply tabular-nums text-slate-950; }
+.metric-danger { @apply text-rose-700; }
+
+.ops-workspace { @apply grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_390px]; }
+.workspace-main { @apply space-y-5; }
+.workspace-side { @apply space-y-5; }
+.ops-table { @apply w-full; }
+.ops-table-head,
+.ops-table-row { @apply grid items-center gap-4 border-t border-slate-100 px-4 py-3 text-sm; }
+.ops-table-head { @apply bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+.ops-table-row { @apply text-slate-700 transition-colors hover:bg-slate-50; }
+.ops-table-row strong { @apply block font-medium text-slate-950; }
+.ops-table-row small { @apply mt-0.5 block truncate text-xs text-slate-500; }
+.review-grid { @apply grid-cols-[minmax(180px,1.4fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,1fr)]; }
+.live-grid { @apply grid-cols-[minmax(200px,1.5fr)_minmax(120px,1fr)_minmax(120px,0.8fr)_80px_minmax(120px,1fr)]; }
+.ops-empty-row { @apply px-4 py-5 text-sm text-slate-500; }
+
+.risk-list { @apply divide-y divide-slate-100; }
+.risk-item { @apply flex items-start justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-slate-50; }
+.risk-item strong { @apply block text-slate-950; }
+.risk-item span { @apply mt-1 block max-w-48 truncate font-mono text-xs text-slate-500; }
+.risk-item b { @apply mt-2 block text-right font-semibold tabular-nums text-slate-950; }
+.legacy-links { @apply grid gap-2 text-sm; }
+.legacy-links a { @apply rounded border border-slate-200 px-3 py-2 text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50; }
+
+.admin-intel { @apply grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_390px]; }
+.intel-main { @apply grid min-w-0 grid-cols-1 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200 2xl:grid-cols-3; }
+.intel-main .ops-panel { @apply min-w-0; }
+.intel-side { @apply space-y-5; }
+.health-grid { @apply grid grid-cols-1 gap-3 md:grid-cols-2; }
+.health-dial { --dial-color: #0BA26D; @apply grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3 rounded border border-slate-100 bg-slate-50 p-3; }
+.health-dial.tone-watch { --dial-color: #d97706; }
+.health-dial.tone-risk { --dial-color: #e11d48; }
+.dial-ring { @apply grid h-16 w-16 place-items-center rounded-full; }
+.dial-ring span { @apply grid h-12 w-12 place-items-center rounded-full bg-white text-sm font-semibold tabular-nums text-slate-950; }
+.health-dial strong { @apply block text-sm font-semibold text-slate-950; }
+.health-dial p { @apply mt-1 line-clamp-2 text-xs leading-5 text-slate-500; }
+.ops-chart-shell { @apply h-72 w-full; }
+.balance-grid { @apply grid grid-cols-2 gap-2; }
+.balance-metric { @apply rounded border border-slate-100 bg-slate-50 px-3 py-3; }
+.balance-metric span { @apply block text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+.balance-metric strong { @apply mt-3 block text-xl font-semibold tabular-nums text-slate-950; }
+.capacity-bar { @apply mt-4 h-3 overflow-hidden rounded-full bg-slate-100; }
+.capacity-bar span { @apply block h-full rounded-full bg-[#0BA26D] transition-[width] duration-500 ease-out; }
+.capacity-copy { @apply mt-3 flex items-center justify-between gap-4 text-sm; }
+.capacity-copy strong { @apply tabular-nums text-slate-950; }
+.capacity-copy span { @apply text-right text-slate-500; }
+.risk-register { @apply divide-y divide-slate-100; }
+.risk-register-item { @apply flex items-start justify-between gap-4 py-3 text-sm transition-colors hover:bg-slate-50; }
+.risk-register-item span { @apply block font-semibold text-slate-950; }
+.risk-register-item p { @apply mt-1 text-xs leading-5 text-slate-500; }
+.risk-register-item strong { @apply rounded px-2 py-1 text-right text-sm font-semibold tabular-nums; }
+.risk-register-item.severity-critical strong { @apply bg-rose-50 text-rose-700; }
+.risk-register-item.severity-warning strong { @apply bg-amber-50 text-amber-700; }
+.risk-register-item.severity-watch strong { @apply bg-slate-100 text-slate-700; }
+
+.explorer-page,
+.query-page { @apply space-y-6 text-slate-950; }
+.explorer-tabs { @apply flex max-w-3xl flex-wrap justify-end gap-1; }
+.explorer-tabs button { @apply rounded border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950; }
+.explorer-tabs button.active { @apply border-[#0BA26D] bg-[#0BA26D] text-white; }
+.explorer-toolbar { @apply flex flex-wrap items-center gap-3 rounded border border-slate-200 bg-white p-3; }
+.explorer-toolbar input { @apply min-w-72 flex-1 rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950; }
+.explorer-toolbar select,
+.query-controls select,
+.query-controls input { @apply rounded border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-950; }
+.toolbar-count { @apply ml-auto text-sm text-slate-500; }
+.explorer-layout { @apply grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]; }
+.explorer-table-wrap { @apply min-w-0 rounded border border-slate-200 bg-white; }
+.explorer-table { @apply overflow-x-auto; }
+.explorer-table-head,
+.explorer-table-row { @apply grid min-w-[980px] gap-4 border-b border-slate-100 px-4 py-3 text-left text-sm; }
+.explorer-table-head { @apply bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+.explorer-table-row { @apply w-full cursor-pointer text-slate-700 transition-colors hover:bg-slate-50; }
+.explorer-table-row.selected { @apply bg-[#ecfdf5]; }
+.explorer-table-row span { @apply truncate; }
+.explorer-pager { @apply flex items-center justify-between border-t border-slate-100 px-4 py-3 text-sm text-slate-500; }
+.explorer-pager button { @apply ml-2 rounded border border-slate-300 px-3 py-1 text-slate-700 disabled:opacity-40; }
+.inspector { @apply rounded border border-slate-200 bg-white p-4; }
+.inspector-empty { @apply text-sm text-slate-500; }
+.inspector-fields { @apply max-h-[520px] overflow-auto border-y border-slate-100 py-2; }
+.inspector-fields div { @apply grid grid-cols-[140px_minmax(0,1fr)] gap-3 border-b border-slate-50 py-2 text-sm last:border-b-0; }
+.inspector-fields dt { @apply truncate text-xs font-medium uppercase tracking-wide text-slate-500; }
+.inspector-fields dd { @apply break-words text-slate-800; }
+.edit-panel { @apply mt-4 space-y-3 rounded border border-slate-200 bg-slate-50 p-3; }
+.edit-panel label { @apply block text-xs font-medium uppercase tracking-wide text-slate-500; }
+.edit-panel select,
+.edit-panel input[type="text"],
+.edit-panel input:not([type]) { @apply mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm normal-case tracking-normal text-slate-900 outline-none focus:border-slate-950; }
+.check-row,
+.check-grid label { @apply flex items-center gap-2 normal-case tracking-normal text-slate-700; }
+.check-grid { @apply grid grid-cols-2 gap-2 text-sm; }
+.save-button { @apply w-full rounded bg-[#0BA26D] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#059669] transition-colors; }
+.edit-message { @apply text-sm text-slate-600; }
+
+.query-controls { @apply flex items-center gap-2; }
+.query-controls input { @apply w-24; }
+.query-layout { @apply grid grid-cols-1 gap-5 xl:grid-cols-[280px_minmax(0,1fr)]; }
+.query-presets { @apply rounded border border-slate-200 bg-white p-4; }
+.query-presets button { @apply mb-2 block w-full rounded border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50; }
+.query-workbench { @apply min-w-0 rounded border border-slate-200 bg-white p-4; }
+.query-workbench textarea { @apply h-72 w-full resize-y rounded border border-slate-300 bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-50 outline-none focus:border-[#0BA26D]; }
+.query-actions { @apply mt-3 flex items-center justify-between text-sm text-slate-500; }
+.query-actions button { @apply rounded bg-slate-950 px-4 py-2 font-medium text-white disabled:opacity-50; }
+.query-error { @apply mt-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700; }
+.query-result { @apply mt-4 rounded border border-slate-200; }
+.query-result-head { @apply flex items-center justify-between border-b border-slate-100 px-3 py-2 text-sm; }
+.query-result-head span { @apply text-slate-500; }
+.query-grid { @apply max-h-[520px] overflow-auto; }
+.query-grid table { @apply w-full text-sm; }
+.query-grid th { @apply sticky top-0 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+.query-grid td { @apply max-w-80 truncate border-t border-slate-100 px-3 py-2 text-slate-700; }
+
+.funnel-page { @apply space-y-6 text-slate-950; }
+.funnel-controls { @apply flex min-w-52 items-center justify-between gap-3 rounded border border-slate-200 bg-white px-4 py-3 text-sm; }
+.funnel-controls span { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+.funnel-controls select { @apply rounded border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-950; }
+.funnel-note { @apply flex flex-col gap-1 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:gap-3; }
+.funnel-note strong { @apply text-xs uppercase tracking-wide; }
+.funnel-note span { @apply text-amber-800; }
+.funnel-stat-strip { @apply grid grid-cols-2 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200 md:grid-cols-3 xl:grid-cols-6; }
+.funnel-stat { @apply min-h-24 bg-white p-4 transition-colors hover:bg-slate-50; }
+.funnel-stat span { @apply block text-xs font-semibold uppercase tracking-wide text-slate-500; }
+.funnel-stat strong { @apply mt-5 block text-2xl font-semibold tracking-tight text-slate-950; }
+.funnel-stat.tone-good strong { @apply text-[#0BA26D]; }
+.funnel-stat.tone-watch strong { @apply text-amber-700; }
+.funnel-grid { @apply grid grid-cols-1 gap-px overflow-hidden rounded border border-slate-200 bg-slate-200 xl:grid-cols-2; }
+.funnel-wide-grid { @apply grid grid-cols-1 gap-5; }
+.funnel-panel { @apply min-w-0 bg-white p-4; }
+.chart-shell { @apply h-72 w-full; }
+.chart-shell.tall { @apply h-80; }
+.donut-panel { @apply grid grid-cols-1 items-center gap-4 md:grid-cols-[220px_minmax(0,1fr)]; }
+.donut-chart { @apply h-56; }
+.donut-legend { @apply grid gap-2; }
+.donut-legend div { @apply flex items-center gap-3 rounded border border-slate-100 px-3 py-2 text-sm; }
+.donut-legend i { @apply h-2.5 w-2.5 rounded-full; }
+.donut-legend span { @apply flex-1 text-slate-600; }
+.donut-legend strong { @apply tabular-nums text-slate-950; }
+.funnel-read-list { @apply grid gap-3; }
+.read-item { @apply rounded border border-slate-100 bg-slate-50 px-3 py-3; }
+.read-item > div { @apply flex items-center justify-between gap-3; }
+.read-item span { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+.read-item strong { @apply text-lg font-semibold text-slate-950; }
+.read-item p { @apply mt-2 text-sm leading-5 text-slate-600; }
+.read-item.tone-risk strong { @apply text-rose-700; }
+.transition-list { @apply grid gap-3; }
+.transition-row { @apply grid grid-cols-[minmax(190px,0.8fr)_minmax(0,1fr)_60px] items-center gap-4 text-sm; }
+.transition-row > div:first-child span { @apply block text-xs uppercase tracking-wide text-slate-500; }
+.transition-row > div:first-child strong { @apply block font-semibold text-slate-950; }
+.transition-track { @apply h-3 overflow-hidden rounded-full bg-slate-100; }
+.transition-track i { @apply block h-full rounded-full bg-[#059669] transition-[width] duration-500 ease-out; }
+.transition-row b { @apply text-right tabular-nums text-slate-950; }
+.funnel-table { @apply overflow-x-auto rounded border border-slate-200; }
+.funnel-table-head,
+.funnel-table-row { @apply grid min-w-[1120px] grid-cols-[110px_120px_140px_110px_210px_160px_minmax(190px,1fr)] items-center gap-3 px-4 py-3 text-sm; }
+.funnel-table-head { @apply bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+.funnel-table-row { @apply border-t border-slate-100 text-slate-700 transition-colors hover:bg-slate-50; }
+.funnel-table-row span { @apply truncate; }

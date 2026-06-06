@@ -368,6 +368,177 @@ async def preference_funnel(
     }
 
 
+@router.get("/funnel/preferences/deep")
+async def deep_preference_funnel(
+    _: str = Depends(require_admin),
+    since_days: int = Query(30, ge=1, le=365),
+) -> dict:
+    since_interval = str(since_days)
+    async with ka().acquire() as c:
+        search_anchor = await c.fetchval(
+            """
+            SELECT COALESCE(MAX(searched_at), now()::timestamp)
+            FROM inferred_searches
+            """
+        )
+        event_anchor = await c.fetchval(
+            """
+            SELECT COALESCE(MAX(occurred_at), now())
+            FROM preference_status_events
+            """
+        )
+        status_breakdown = await c.fetch(
+            """
+            SELECT to_status AS status,
+                   COUNT(*) AS transitions,
+                   COUNT(DISTINCT preference_id) AS distinct_prefs
+            FROM preference_status_events
+            WHERE occurred_at >= $2::timestamptz - ($1 || ' days')::interval
+            GROUP BY to_status
+            ORDER BY transitions DESC
+            """,
+            since_interval,
+            event_anchor,
+        )
+        session_summary = await c.fetchrow(
+            """
+            SELECT
+              COUNT(*) AS sessions,
+              SUM(CASE WHEN converted THEN 1 ELSE 0 END) AS converted,
+              AVG(candidates_shown) AS avg_candidates,
+              AVG(CASE WHEN converted THEN 1 ELSE 0 END)::float AS conversion_rate,
+              SUM(CASE WHEN has_primary = 0 THEN 1 ELSE 0 END) AS no_primary_sessions,
+              AVG(min_price) AS avg_min_price,
+              AVG(max_price) AS avg_max_price,
+              AVG(EXTRACT(EPOCH FROM (max_pickup_time - min_pickup_time)) / 60.0) AS avg_pickup_window_minutes
+            FROM inferred_searches
+            WHERE searched_at >= $2::timestamp - ($1 || ' days')::interval
+            """,
+            since_interval,
+            search_anchor,
+        )
+        daily_sessions = await c.fetch(
+            """
+            SELECT
+              date_trunc('day', searched_at)::date AS day,
+              COUNT(*) AS sessions,
+              SUM(CASE WHEN converted THEN 1 ELSE 0 END) AS converted,
+              AVG(candidates_shown) AS avg_candidates,
+              AVG(CASE WHEN converted THEN 1 ELSE 0 END)::float AS conversion_rate
+            FROM inferred_searches
+            WHERE searched_at >= $2::timestamp - ($1 || ' days')::interval
+            GROUP BY 1
+            ORDER BY 1
+            """,
+            since_interval,
+            search_anchor,
+        )
+        candidate_buckets = await c.fetch(
+            """
+            WITH bucketed AS (
+              SELECT
+                CASE
+                  WHEN candidates_shown = 0 THEN '0'
+                  WHEN candidates_shown = 1 THEN '1'
+                  WHEN candidates_shown BETWEEN 2 AND 3 THEN '2-3'
+                  ELSE '4+'
+                END AS bucket,
+                CASE
+                  WHEN candidates_shown = 0 THEN 0
+                  WHEN candidates_shown = 1 THEN 1
+                  WHEN candidates_shown BETWEEN 2 AND 3 THEN 2
+                  ELSE 3
+                END AS sort_key,
+                converted
+              FROM inferred_searches
+              WHERE searched_at >= $2::timestamp - ($1 || ' days')::interval
+            )
+            SELECT
+              bucket,
+              COUNT(*) AS sessions,
+              SUM(CASE WHEN converted THEN 1 ELSE 0 END) AS converted,
+              AVG(CASE WHEN converted THEN 1 ELSE 0 END)::float AS conversion_rate
+            FROM bucketed
+            GROUP BY bucket, sort_key
+            ORDER BY sort_key
+            """,
+            since_interval,
+            search_anchor,
+        )
+        response_mix = await c.fetchrow(
+            """
+            SELECT
+              COALESCE(SUM(accepted_count), 0) AS accepted,
+              COALESCE(SUM(declined_count), 0) AS declined,
+              COALESCE(SUM(expired_count), 0) AS expired,
+              COALESCE(SUM(cancelled_count), 0) AS cancelled
+            FROM inferred_searches
+            WHERE searched_at >= $2::timestamp - ($1 || ' days')::interval
+            """,
+            since_interval,
+            search_anchor,
+        )
+        transition_matrix = await c.fetch(
+            """
+            SELECT
+              COALESCE(from_status, 'CREATED') AS from_status,
+              to_status,
+              COUNT(*) AS transitions,
+              COUNT(DISTINCT session_id) AS sessions
+            FROM preference_status_events
+            WHERE occurred_at >= $2::timestamptz - ($1 || ' days')::interval
+            GROUP BY 1, 2
+            ORDER BY transitions DESC
+            """,
+            since_interval,
+            event_anchor,
+        )
+        attention_sessions = await c.fetch(
+            """
+            SELECT
+              session_id::text,
+              passenger_id,
+              searched_at,
+              candidates_shown,
+              accepted_count,
+              declined_count,
+              expired_count,
+              cancelled_count,
+              converted,
+              min_price,
+              max_price
+            FROM inferred_searches
+            WHERE searched_at >= $2::timestamp - ($1 || ' days')::interval
+              AND (
+                converted = false
+                OR candidates_shown <= 1
+                OR expired_count > 0
+                OR cancelled_count > 0
+              )
+            ORDER BY
+              CASE WHEN converted = false THEN 0 ELSE 1 END,
+              candidates_shown ASC,
+              searched_at DESC
+            LIMIT 12
+            """,
+            since_interval,
+            search_anchor,
+        )
+
+    return {
+        "anchor": search_anchor,
+        "event_anchor": event_anchor,
+        "status_breakdown": [dict(r) for r in status_breakdown],
+        "session_summary": dict(session_summary) if session_summary else {},
+        "daily_sessions": [dict(r) for r in daily_sessions],
+        "candidate_buckets": [dict(r) for r in candidate_buckets],
+        "response_mix": dict(response_mix) if response_mix else {},
+        "transition_matrix": [dict(r) for r in transition_matrix],
+        "attention_sessions": [dict(r) for r in attention_sessions],
+        "note": "inferred_searches is a proxy; zero-match searches are still invisible until the matching service persists search telemetry.",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Driver online sessions (heartbeat-inferred)
 # ---------------------------------------------------------------------------

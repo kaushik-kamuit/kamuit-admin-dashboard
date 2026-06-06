@@ -94,8 +94,8 @@ export default function Users() {
                 <td className="px-4 py-2 text-slate-600">{u.phone_number ?? "—"}</td>
                 <td className="px-4 py-2">{u.auth_provider}</td>
                 <td className="px-4 py-2 text-xs">
-                  <span className={u.is_email_verified ? "text-emerald-700" : "text-slate-400"}>✉</span>{" "}
-                  <span className={u.is_phone_verified ? "text-emerald-700" : "text-slate-400"}>☎</span>
+                  <span className={u.is_email_verified ? "text-kamuit-500" : "text-slate-400"}>✉</span>{" "}
+                  <span className={u.is_phone_verified ? "text-kamuit-500" : "text-slate-400"}>☎</span>
                 </td>
                 <td className="px-4 py-2 text-slate-600">{datetime(u.created_at)}</td>
               </tr>

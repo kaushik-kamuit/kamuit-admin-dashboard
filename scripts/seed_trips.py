@@ -32,12 +32,14 @@ random.seed(43)  # different from seed.py's 42 so we layer new randomness
 
 
 def connect() -> psycopg2.extensions.connection:
+    user = os.environ.get("KAMUIT_DB_USER") or os.environ.get("LOCAL_PG_USER", "kamuit_admin")
+    password = os.environ.get("KAMUIT_DB_PASSWORD") or os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only")
     return psycopg2.connect(
         host=os.environ["KAMUIT_DB_HOST"],
         port=int(os.environ["KAMUIT_DB_PORT"]),
         dbname=os.environ["KAMUIT_DB_NAME"],
-        user=os.environ.get("LOCAL_PG_USER", "kamuit_admin"),
-        password=os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only"),
+        user=user,
+        password=password,
     )
 
 

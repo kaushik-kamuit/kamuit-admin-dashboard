@@ -47,7 +47,7 @@ export default function Matching() {
             <YAxis allowDecimals={false} />
             <Tooltip />
             <Legend />
-            <Bar dataKey="accepted"  stackId="s" fill="#059669" />
+            <Bar dataKey="accepted"  stackId="s" fill="#0BA26D" />
             <Bar dataKey="offered"   stackId="s" fill="#0284c7" />
             <Bar dataKey="pending"   stackId="s" fill="#64748b" />
             <Bar dataKey="declined"  stackId="s" fill="#e11d48" />

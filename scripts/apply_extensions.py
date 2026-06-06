@@ -36,6 +36,7 @@ TARGETS = [
         "host_env": "USER_MGMT_DB_HOST",
         "port_env": "USER_MGMT_DB_PORT",
         "name_env": "USER_MGMT_DB_NAME",
+        "cred_prefix": "USER_MGMT",
     },
     {
         "name": "kamuit",
@@ -43,6 +44,7 @@ TARGETS = [
         "host_env": "KAMUIT_DB_HOST",
         "port_env": "KAMUIT_DB_PORT",
         "name_env": "KAMUIT_DB_NAME",
+        "cred_prefix": "KAMUIT",
     },
     {
         "name": "payment",
@@ -50,17 +52,26 @@ TARGETS = [
         "host_env": "PAYMENT_DB_HOST",
         "port_env": "PAYMENT_DB_PORT",
         "name_env": "PAYMENT_DB_NAME",
+        "cred_prefix": "PAYMENT",
     },
 ]
 
 
+def _resolve_creds(target: dict) -> tuple[str, str]:
+    prefix = target.get("cred_prefix", "")
+    user = (os.environ.get(f"{prefix}_DB_USER") if prefix else None) or os.environ.get("LOCAL_PG_USER", "kamuit_admin")
+    password = (os.environ.get(f"{prefix}_DB_PASSWORD") if prefix else None) or os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only")
+    return user, password
+
+
 def connect(target: dict) -> psycopg2.extensions.connection:
+    user, password = _resolve_creds(target)
     return psycopg2.connect(
         host=os.environ[target["host_env"]],
         port=int(os.environ[target["port_env"]]),
         dbname=os.environ[target["name_env"]],
-        user=os.environ.get("LOCAL_PG_USER", "kamuit_admin"),
-        password=os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only"),
+        user=user,
+        password=password,
     )
 
 

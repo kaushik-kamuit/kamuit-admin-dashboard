@@ -43,13 +43,27 @@ CITY_LAT, CITY_LNG = 30.2672, -97.7431
 CITY_SPREAD = 0.15  # ~10 miles
 
 
+def _resolve_creds(host_env: str) -> tuple[str, str]:
+    """Derive per-DB credentials from the host env var prefix."""
+    prefix_map = {
+        "USER_MGMT_DB_HOST": "USER_MGMT",
+        "KAMUIT_DB_HOST": "KAMUIT",
+        "PAYMENT_DB_HOST": "PAYMENT",
+    }
+    prefix = prefix_map.get(host_env, "")
+    user = (os.environ.get(f"{prefix}_DB_USER") if prefix else None) or os.environ.get("LOCAL_PG_USER", "kamuit_admin")
+    password = (os.environ.get(f"{prefix}_DB_PASSWORD") if prefix else None) or os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only")
+    return user, password
+
+
 def conn(host_env: str, port_env: str, name_env: str) -> psycopg2.extensions.connection:
+    user, password = _resolve_creds(host_env)
     return psycopg2.connect(
         host=os.environ[host_env],
         port=int(os.environ[port_env]),
         dbname=os.environ[name_env],
-        user=os.environ.get("LOCAL_PG_USER", "kamuit_admin"),
-        password=os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only"),
+        user=user,
+        password=password,
     )
 
 
@@ -118,8 +132,8 @@ def seed_user_management() -> dict[str, Any]:
             )
 
     admin_uid = uuid.uuid4()
-    driver_uids: list[uuid.UUID] = [uuid.uuid4() for _ in range(20)]
-    passenger_uids: list[uuid.UUID] = [uuid.uuid4() for _ in range(30)]
+    driver_uids: list[uuid.UUID] = [uuid.uuid4() for _ in range(40)]
+    passenger_uids: list[uuid.UUID] = [uuid.uuid4() for _ in range(60)]
 
     now = datetime.utcnow()
     genders = ["male", "female", "other", "prefer_not_to_say"]
@@ -214,9 +228,11 @@ def seed_user_management() -> dict[str, Any]:
                                    plate_state, year, make, model, color, verification_status,
                                    vin_verified, history_verified, insurance_verified, doc_verified,
                                    specs_json, links_json, registration_doc_json, history_flags,
-                                   insurance_summary, created_at, updated_at, is_active)
+                                   insurance_summary, owner_permission_granted,
+                                   created_at, updated_at, is_active)
             VALUES (%s, %s, %s, true, %s, true, %s, %s, 'sedan', %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s, %s, true)
+                    %s, %s, %s, %s, %s, NULL, NULL, NULL, NULL, NULL, %s,
+                    %s, %s, true)
             """,
             (
                 str(uuid.uuid4()),
@@ -235,6 +251,7 @@ def seed_user_management() -> dict[str, Any]:
                 random.random() < 0.8,
                 random.random() < 0.75,
                 random.random() < 0.7,
+                random.random() < 0.85,
                 now, now,
             ),
         )
@@ -355,6 +372,7 @@ def seed_kamuit_backend(users: dict[str, Any]) -> dict[str, Any]:
             c.rollback()
             cur = c.cursor()
 
+    now = datetime.utcnow()
     driver_uids: list[str] = users["driver_uids"]
     passenger_uids: list[str] = users["passenger_uids"]
 
@@ -363,7 +381,7 @@ def seed_kamuit_backend(users: dict[str, Any]) -> dict[str, Any]:
     run_statuses: dict[str, str] = {}
     run_schedules: dict[str, list[str]] = {}
 
-    for _ in range(25):
+    for _ in range(60):
         run_id = str(uuid.uuid4())
         driver_id = random.choice(driver_uids)
         olat, olng = rand_point()
@@ -429,7 +447,7 @@ def seed_kamuit_backend(users: dict[str, Any]) -> dict[str, Any]:
     ride_preference_rows: list[dict[str, Any]] = []
     ride_assignment_rows: list[dict[str, Any]] = []
 
-    for _ in range(60):
+    for _ in range(150):
         ride_id = str(uuid.uuid4())
         rider_id = random.choice(passenger_uids)
         status = weighted_choice(list(zip(RIDE_STATUSES, RIDE_STATUS_WEIGHTS)))
@@ -596,9 +614,51 @@ def seed_kamuit_backend(users: dict[str, Any]) -> dict[str, Any]:
                 "ride_created": ride["created"],
             })
 
-    for run_id in random.sample(driver_run_ids, min(8, len(driver_run_ids))):
-        if run_statuses[run_id] not in ("IN_PROGRESS", "PARTIALLY_FILLED"):
-            continue
+    # Push tokens for a subset of users
+    all_user_ids = driver_uids + passenger_uids
+    for uid in random.sample(all_user_ids, min(50, len(all_user_ids))):
+        cur.execute(
+            """
+            INSERT INTO push_tokens (id, user_id, expo_push_token, platform,
+                                      created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                str(uuid.uuid4()), uid,
+                f"ExponentPushToken[{uuid.uuid4().hex[:22]}]",
+                random.choice(["ios", "ios", "ios", "android"]),
+                now - timedelta(days=random.randint(0, 90)),
+                now - timedelta(days=random.randint(0, 30)),
+            ),
+        )
+
+    # Ride alerts for some passengers
+    for uid in random.sample(passenger_uids, min(15, len(passenger_uids))):
+        lat, lng = rand_point()
+        dlat, dlng = rand_point()
+        try:
+            cur.execute(
+                """
+                INSERT INTO ride_alerts (id, passenger_id, origin_lat, origin_lng,
+                                          destination_lat, destination_lng,
+                                          trip_date, is_notified, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    str(uuid.uuid4()), uid,
+                    lat, lng, dlat, dlng,
+                    date.today() + timedelta(days=random.randint(0, 7)),
+                    random.random() < 0.3,
+                    now - timedelta(days=random.randint(0, 5)),
+                ),
+            )
+        except psycopg2.errors.UndefinedTable:
+            c.rollback()
+            cur = c.cursor()
+            break
+
+    active_run_ids = [r for r in driver_run_ids if run_statuses[r] in ("IN_PROGRESS", "PARTIALLY_FILLED", "OPEN")]
+    for run_id in active_run_ids:
         sched_ids = run_schedules.get(run_id, [])
         if not sched_ids:
             continue

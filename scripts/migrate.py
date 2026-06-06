@@ -32,6 +32,7 @@ BACKENDS = [
         "db_host_env": "USER_MGMT_DB_HOST",
         "db_port_env": "USER_MGMT_DB_PORT",
         "db_name_env": "USER_MGMT_DB_NAME",
+        "cred_prefix": "USER_MGMT",
         "needs_postgis": False,
         "needs_fake_spatial_ref_sys": True,
     },
@@ -41,6 +42,7 @@ BACKENDS = [
         "db_host_env": "KAMUIT_DB_HOST",
         "db_port_env": "KAMUIT_DB_PORT",
         "db_name_env": "KAMUIT_DB_NAME",
+        "cred_prefix": "KAMUIT",
         "needs_postgis": True,
     },
     {
@@ -49,6 +51,7 @@ BACKENDS = [
         "db_host_env": "PAYMENT_DB_HOST",
         "db_port_env": "PAYMENT_DB_PORT",
         "db_name_env": "PAYMENT_DB_NAME",
+        "cred_prefix": "PAYMENT",
         "needs_postgis": False,
     },
 ]
@@ -105,10 +108,19 @@ def ensure_fake_spatial_ref_sys(host: str, port: int, dbname: str, user: str, pa
     conn.close()
 
 
-def run_alembic(backend: dict, pg_user: str, pg_password: str) -> None:
+def _resolve_creds(backend: dict) -> tuple[str, str]:
+    """Per-DB credentials with fallback to LOCAL_PG_USER / LOCAL_PG_PASSWORD."""
+    prefix = backend.get("cred_prefix", "")
+    user = (os.environ.get(f"{prefix}_DB_USER") if prefix else None) or os.environ.get("LOCAL_PG_USER", "kamuit_admin")
+    password = (os.environ.get(f"{prefix}_DB_PASSWORD") if prefix else None) or os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only")
+    return user, password
+
+
+def run_alembic(backend: dict) -> None:
     host = os.environ[backend["db_host_env"]]
     port = os.environ[backend["db_port_env"]]
     name = os.environ[backend["db_name_env"]]
+    pg_user, pg_password = _resolve_creds(backend)
 
     repo_path: Path = backend["path"]
     if not repo_path.exists():
@@ -160,11 +172,8 @@ def run_alembic(backend: dict, pg_user: str, pg_password: str) -> None:
 
 
 def main() -> None:
-    pg_user = os.environ.get("LOCAL_PG_USER", "kamuit_admin")
-    pg_password = os.environ.get("LOCAL_PG_PASSWORD", "local_dev_only")
-
     for backend in BACKENDS:
-        run_alembic(backend, pg_user, pg_password)
+        run_alembic(backend)
 
     print("\nAll migrations applied successfully.")
 
