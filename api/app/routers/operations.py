@@ -1144,9 +1144,10 @@ async def update_vehicle_status(
 
 @router.patch("/rides/{ride_id}/status")
 async def update_ride_status(
+    request: Request,
     ride_id: UUID,
     body: RideStatusPatch,
-    _: str = Depends(require_admin),
+    user: TokenPayload = Depends(require_role("operator")),
 ) -> dict:
     async with ka().acquire() as c:
         row = await c.fetchrow(
@@ -1161,14 +1162,19 @@ async def update_ride_status(
         )
     if not row:
         raise HTTPException(404, "Ride not found.")
+    await log_action(user.sub, "update_ride_status", role=user.role,
+                     resource="ride", resource_id=str(ride_id),
+                     detail={"status": body.status},
+                     ip_address=get_client_ip(request), user_agent=get_user_agent(request))
     return {"updated": _row(row)}
 
 
 @router.patch("/driver-runs/{run_id}/status")
 async def update_driver_run_status(
+    request: Request,
     run_id: UUID,
     body: DriverRunStatusPatch,
-    _: str = Depends(require_admin),
+    user: TokenPayload = Depends(require_role("operator")),
 ) -> dict:
     async with ka().acquire() as c:
         row = await c.fetchrow(
@@ -1183,4 +1189,8 @@ async def update_driver_run_status(
         )
     if not row:
         raise HTTPException(404, "Driver run not found.")
+    await log_action(user.sub, "update_driver_run_status", role=user.role,
+                     resource="driver_run", resource_id=str(run_id),
+                     detail={"status": body.status},
+                     ip_address=get_client_ip(request), user_agent=get_user_agent(request))
     return {"updated": _row(row)}
