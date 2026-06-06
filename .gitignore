@@ -1,6 +1,7 @@
 .env
 .env.local
 .env.*.local
+render.env
 
 .venv/
 .venv-bootstrap/

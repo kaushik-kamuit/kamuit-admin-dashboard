@@ -1,0 +1,9 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background circle matching the app icon -->
+  <rect width="32" height="32" rx="8" fill="#0f1117"/>
+  <!-- Kamuit K mark, scaled to fit, colored in brand green -->
+  <g transform="translate(4, 4) scale(0.4)">
+    <path d="M24.8418 0V60C14.8824 58.8 6.0712 50.994 2.3135 41.8397C-5.0277 23.9509 5.7928 3.1012 24.8418 0Z" fill="#0BA26D"/>
+    <path d="M47.6486 58.344L25.2682 30.2497L48.6054 1.6207C53.041 3.7757 56.721 7.2886 59.591 11.2571L44.5172 29.8029L60 48.7516C60 49.435 55.651 53.754 54.816 54.463C53.737 55.375 48.9098 59.089 47.6486 58.353V58.344Z" fill="#0BA26D"/>
+  </g>
+</svg>
