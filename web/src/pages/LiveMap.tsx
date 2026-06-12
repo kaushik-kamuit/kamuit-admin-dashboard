@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { Map, CircleMarker, Polyline, Popup } from "../components/MapView";
 import type { LatLng } from "../components/MapView";
@@ -9,302 +10,292 @@ import { decodePolyline } from "../lib/polyline";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type RunStatus = "IN_PROGRESS" | "PARTIALLY_FILLED" | "OPEN";
-
-interface ActiveRun {
+interface MapRun {
   run_id: string;
   driver_id: string;
-  status: RunStatus;
+  status: string;
+  route_polyline: string | null;
+  origin_address: string;
+  dest_address: string;
   origin: LatLng;
   destination: LatLng;
-  route_polyline: string | null;
-  lat: number;
-  lng: number;
-  ts: string;
+  ride_id: string | null;
+  rider_id: string | null;
+  created_at: string | null;
 }
 
-interface WsInitMessage {
-  type: "init";
-  runs: ActiveRun[];
+type RunCategory = "active" | "completed" | "scheduled";
+
+interface MapRunsResponse {
+  active: MapRun[];
+  completed: MapRun[];
+  scheduled: MapRun[];
 }
 
-interface WsPingMessage {
-  driver_run_id: string;
-  driver_id: string;
-  lat: number;
-  lng: number;
-  ts: string;
-}
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 
-type ConnectionMode = "ws" | "polling" | "disconnected";
+const COLLEGE_STATION: LatLng = [30.6280, -96.3344];
 
-const STATUS_COLOR: Record<RunStatus, string> = {
-  IN_PROGRESS: "#22c55e",
-  PARTIALLY_FILLED: "#3b82f6",
-  OPEN: "#94a3b8",
+const CATEGORY_CONFIG: Record<RunCategory, { label: string; color: string; icon: string }> = {
+  active:    { label: "Active",    color: "#22c55e", icon: "●" },
+  completed: { label: "Completed", color: "#6366f1", icon: "●" },
+  scheduled: { label: "Scheduled", color: "#f59e0b", icon: "●" },
 };
 
-const AUSTIN_CENTER: LatLng = [30.267, -97.743];
-function getWsUrl(): string {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://127.0.0.1:8001";
-  const wsBase = base.replace(/^http/, "ws");
-  const token = localStorage.getItem("kamuit_admin_token") ?? "";
-  return `${wsBase}/api/live/ws?token=${encodeURIComponent(token)}`;
-}
-const POLL_INTERVAL = 10_000;
-const WS_KEEPALIVE_INTERVAL = 30_000;
+const POLL_INTERVAL = 15_000;
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function LiveMap() {
-  const [runs, setRuns] = useState<Record<string, ActiveRun>>({});
-  const [connMode, setConnMode] = useState<ConnectionMode>("disconnected");
-  const [wsClients, setWsClients] = useState(0);
-  const wsRef = useRef<WebSocket | null>(null);
-  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  /* ---- REST fallback ---- */
-  const { data: polledData } = useQuery({
-    queryKey: ["live-active-runs"],
-    queryFn: async () => (await api.get("/api/live/active-runs")).data,
-    refetchInterval: connMode !== "ws" ? POLL_INTERVAL : false,
-    enabled: connMode !== "ws",
+  const navigate = useNavigate();
+  const [filters, setFilters] = useState<Record<RunCategory, boolean>>({
+    active: true,
+    completed: true,
+    scheduled: true,
   });
 
-  useEffect(() => {
-    if (connMode === "polling" && polledData?.runs) {
-      const map: Record<string, ActiveRun> = {};
-      for (const r of polledData.runs as ActiveRun[]) map[r.run_id] = r;
-      setRuns(map);
-      if (polledData.ws_clients != null) setWsClients(polledData.ws_clients);
-    }
-  }, [polledData, connMode]);
+  const { data, isLoading } = useQuery<MapRunsResponse>({
+    queryKey: ["live-map-runs"],
+    queryFn: async () => (await api.get("/api/live/map-runs")).data,
+    refetchInterval: POLL_INTERVAL,
+  });
 
-  /* ---- WebSocket ---- */
-  const connectWs = useCallback(() => {
-    if (wsRef.current) return;
-
-    const ws = new WebSocket(getWsUrl());
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setConnMode("ws");
-      keepAliveRef.current = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send("ping");
-      }, WS_KEEPALIVE_INTERVAL);
-    };
-
-    ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(ev.data);
-
-        if (msg.type === "init") {
-          const init = msg as WsInitMessage;
-          const map: Record<string, ActiveRun> = {};
-          for (const r of init.runs) map[r.run_id] = r;
-          setRuns(map);
-          if ((msg as any).ws_clients != null) setWsClients((msg as any).ws_clients);
-          return;
-        }
-
-        const ping = msg as WsPingMessage;
-        setRuns((prev) => {
-          const existing = prev[ping.driver_run_id];
-          if (!existing) return prev;
-          return {
-            ...prev,
-            [ping.driver_run_id]: {
-              ...existing,
-              lat: ping.lat,
-              lng: ping.lng,
-              ts: ping.ts,
-            },
-          };
-        });
-      } catch {
-        // non-JSON frames (e.g. "pong") — ignore
+  const categorisedRuns = useMemo(() => {
+    if (!data) return [];
+    const result: { run: MapRun; category: RunCategory }[] = [];
+    for (const cat of ["active", "completed", "scheduled"] as RunCategory[]) {
+      if (!filters[cat]) continue;
+      for (const run of data[cat] ?? []) {
+        if (run.route_polyline) result.push({ run, category: cat });
       }
-    };
-
-    ws.onclose = () => {
-      cleanup();
-      setConnMode("polling");
-      setTimeout(connectWs, 5_000);
-    };
-
-    ws.onerror = () => {
-      ws.close();
-    };
-  }, []);
-
-  const cleanup = useCallback(() => {
-    if (keepAliveRef.current) {
-      clearInterval(keepAliveRef.current);
-      keepAliveRef.current = null;
     }
-    wsRef.current = null;
-  }, []);
+    return result;
+  }, [data, filters]);
 
-  useEffect(() => {
-    connectWs();
-    return () => {
-      const ws = wsRef.current;
-      if (ws) {
-        ws.onclose = null; // prevent reconnect on intentional teardown
-        ws.close();
-      }
-      cleanup();
-    };
-  }, [connectWs, cleanup]);
+  const counts = useMemo(() => ({
+    active: data?.active?.length ?? 0,
+    completed: data?.completed?.length ?? 0,
+    scheduled: data?.scheduled?.length ?? 0,
+  }), [data]);
 
-  /* ---- Derived ---- */
-  const runList = Object.values(runs);
-  const driversOnline = new Set(runList.map((r) => r.driver_id)).size;
+  const toggle = (cat: RunCategory) =>
+    setFilters((p) => ({ ...p, [cat]: !p[cat] }));
 
-  const connDot =
-    connMode === "ws"
-      ? "bg-green-500"
-      : connMode === "polling"
-        ? "bg-yellow-500"
-        : "bg-red-500";
+  const goToRun = (run: MapRun) => {
+    if (run.ride_id) navigate(`/rides/${run.ride_id}`);
+    else navigate(`/driver-runs/${run.run_id}`);
+  };
 
-  const connLabel =
-    connMode === "ws"
-      ? "WebSocket connected"
-      : connMode === "polling"
-        ? "Polling (WS unavailable)"
-        : "Disconnected";
-
-  /* ---- Render ---- */
   return (
     <div className="space-y-4">
       {/* Header */}
       <div>
         <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-kamuit-500">
-          LIVE TRACKING
+          LIVE MAP
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Live Trip Map</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">
+          College Station — Route Map
+        </h1>
         <p className="text-sm text-slate-500">
-          Real-time driver positions and active trip tracking
+          All driver-run routes with polylines · click any route to view details
         </p>
       </div>
 
-      {/* Stats bar */}
-      <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-white px-5 py-3">
-        {/* Connection indicator */}
-        <div className="flex items-center gap-2 text-sm text-slate-700">
-          <span className={`inline-block h-2.5 w-2.5 rounded-full ${connDot}`} />
-          {connLabel}
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-5 py-3">
+        {(["active", "completed", "scheduled"] as RunCategory[]).map((cat) => {
+          const cfg = CATEGORY_CONFIG[cat];
+          const on = filters[cat];
+          return (
+            <button
+              key={cat}
+              onClick={() => toggle(cat)}
+              className={`
+                flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium
+                transition-all border
+                ${on
+                  ? "border-transparent text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-400"
+                }
+              `}
+              style={on ? { backgroundColor: cfg.color } : undefined}
+            >
+              <span className="text-xs">{cfg.icon}</span>
+              {cfg.label}
+              <span className={`
+                ml-1 rounded-full px-1.5 py-0.5 text-xs font-semibold
+                ${on ? "bg-white/25 text-white" : "bg-slate-100 text-slate-400"}
+              `}>
+                {counts[cat]}
+              </span>
+            </button>
+          );
+        })}
+
+        <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+          {isLoading && (
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+          )}
+          <span>
+            {categorisedRuns.length} route{categorisedRuns.length !== 1 ? "s" : ""} shown
+          </span>
         </div>
-
-        <div className="mx-2 h-5 w-px bg-slate-200" />
-
-        <Stat label="Active Runs" value={runList.length} />
-        <Stat label="Drivers Online" value={driversOnline} />
-        <Stat label="WS Clients" value={wsClients} />
       </div>
 
       {/* Map */}
-      <div className="rounded-lg border border-slate-200 bg-white p-2">
-        <Map center={AUSTIN_CENTER} zoom={11} height="calc(100vh - 280px)">
-          {runList.map((run) => (
-            <RunMarkers key={run.run_id} run={run} />
+      <div className="rounded-lg border border-slate-200 bg-white p-2 relative">
+        <Map center={COLLEGE_STATION} zoom={13} height="calc(100vh - 280px)">
+          {categorisedRuns.map(({ run, category }) => (
+            <RouteLayer
+              key={run.run_id}
+              run={run}
+              category={category}
+              onClick={() => goToRun(run)}
+            />
           ))}
         </Map>
+
+        {/* Legend overlay */}
+        <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-3 shadow-sm">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">
+            Legend
+          </div>
+          <div className="space-y-1.5">
+            {(["active", "completed", "scheduled"] as RunCategory[]).map((cat) => {
+              const cfg = CATEGORY_CONFIG[cat];
+              return (
+                <div key={cat} className="flex items-center gap-2 text-xs text-slate-600">
+                  <span
+                    className="inline-block h-[3px] w-5 rounded"
+                    style={{ backgroundColor: cfg.color, opacity: 0.7 }}
+                  />
+                  {cfg.label} routes
+                </div>
+              );
+            })}
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span className="inline-block h-2 w-2 rounded-full bg-slate-700" />
+              Origin / Destination
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Sub-components                                                     */
+/*  Route layer for a single run                                       */
 /* ------------------------------------------------------------------ */
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-1.5 text-sm">
-      <span className="font-semibold text-slate-900">{value}</span>
-      <span className="text-slate-500">{label}</span>
-    </div>
-  );
-}
+function RouteLayer({
+  run,
+  category,
+  onClick,
+}: {
+  run: MapRun;
+  category: RunCategory;
+  onClick: () => void;
+}) {
+  const color = CATEGORY_CONFIG[category].color;
 
-function RunMarkers({ run }: { run: ActiveRun }) {
-  const color = STATUS_COLOR[run.status] ?? "#94a3b8";
-  const lastPing = run.ts ? new Date(run.ts).toLocaleTimeString() : "—";
-
-  const routePositions = useMemo<LatLng[]>(() => {
+  const positions = useMemo<LatLng[]>(() => {
     if (run.route_polyline) {
       try {
         return decodePolyline(run.route_polyline);
-      } catch {
-        // fall through to straight-line fallback
-      }
+      } catch { /* fallback */ }
     }
     return [run.origin, run.destination];
   }, [run.route_polyline, run.origin, run.destination]);
 
+  const popupContent = (
+    <div className="space-y-1 text-sm min-w-[200px]">
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+        <span className="font-semibold capitalize">{category}</span>
+        <span className="text-slate-400">·</span>
+        <span className="text-slate-500 text-xs">{run.status}</span>
+      </div>
+      <div className="text-xs">
+        <span className="text-slate-400">From </span>
+        <span className="text-slate-700">{run.origin_address || "—"}</span>
+      </div>
+      <div className="text-xs">
+        <span className="text-slate-400">To </span>
+        <span className="text-slate-700">{run.dest_address || "—"}</span>
+      </div>
+      <div className="text-xs text-slate-400">
+        Run {run.run_id.slice(0, 8)}…
+        {run.ride_id && <> · Ride {run.ride_id.slice(0, 8)}…</>}
+      </div>
+      <div className="pt-1 text-[11px] text-blue-600 font-medium cursor-pointer">
+        Click to view details →
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {/* Origin marker */}
+      {/* Polyline */}
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color,
+          weight: 4,
+          opacity: 0.55,
+          lineCap: "round",
+          lineJoin: "round",
+        }}
+        eventHandlers={{ click: onClick }}
+      >
+        <Popup>{popupContent}</Popup>
+      </Polyline>
+
+      {/* Origin dot */}
       <CircleMarker
         center={run.origin}
         radius={5}
-        pathOptions={{ color: "#6b7280", fillColor: "#6b7280", fillOpacity: 0.6, weight: 2 }}
+        pathOptions={{
+          color: "#1e293b",
+          fillColor: color,
+          fillOpacity: 0.85,
+          weight: 2,
+        }}
+        eventHandlers={{ click: onClick }}
       >
         <Popup>
-          <span className="text-xs text-slate-600">Origin</span>
+          <div className="text-xs space-y-1">
+            <div className="font-semibold">Origin</div>
+            <div className="text-slate-600">{run.origin_address || "—"}</div>
+            <div className="text-blue-600 font-medium cursor-pointer">Click to view →</div>
+          </div>
         </Popup>
       </CircleMarker>
 
-      {/* Destination marker */}
+      {/* Destination dot */}
       <CircleMarker
         center={run.destination}
         radius={5}
-        pathOptions={{ color: "#6b7280", fillColor: "#6b7280", fillOpacity: 0.6, weight: 2 }}
-      >
-        <Popup>
-          <span className="text-xs text-slate-600">Destination</span>
-        </Popup>
-      </CircleMarker>
-
-      {/* Actual route polyline (road-following when data exists, straight-line fallback) */}
-      <Polyline
-        positions={routePositions}
         pathOptions={{
-          color: run.route_polyline ? "#3b82f6" : "#9ca3af",
-          weight: run.route_polyline ? 3 : 1.5,
-          dashArray: run.route_polyline ? undefined : "6 4",
-          opacity: 0.8,
+          color: "#1e293b",
+          fillColor: "#1e293b",
+          fillOpacity: 0.7,
+          weight: 2,
         }}
-      />
-
-      {/* Driver position */}
-      <CircleMarker
-        center={[run.lat, run.lng]}
-        radius={8}
-        pathOptions={{ color, fillColor: color, fillOpacity: 0.85, weight: 2 }}
+        eventHandlers={{ click: onClick }}
       >
         <Popup>
-          <div className="space-y-1 text-sm min-w-[160px]">
-            <div>
-              <span className="text-slate-500">Run </span>
-              <span className="font-mono font-semibold">{run.run_id.slice(0, 8)}</span>
-            </div>
-            <div>
-              <span className="text-slate-500">Driver </span>
-              <span className="font-mono font-semibold">{run.driver_id.slice(0, 8)}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <span className="font-medium">{run.status}</span>
-            </div>
-            <div className="text-xs text-slate-500">Last ping: {lastPing}</div>
+          <div className="text-xs space-y-1">
+            <div className="font-semibold">Destination</div>
+            <div className="text-slate-600">{run.dest_address || "—"}</div>
+            <div className="text-blue-600 font-medium cursor-pointer">Click to view →</div>
           </div>
         </Popup>
       </CircleMarker>

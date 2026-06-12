@@ -162,3 +162,70 @@ async def active_runs(_user=Depends(require_role("viewer"))):
         "lng": float(r["lng"]) if r["lng"] else None,
         "ts": r["recorded_at"].isoformat() if r["recorded_at"] else None,
     } for r in rows]
+
+
+def _run_row(r) -> dict:
+    return {
+        "run_id": str(r["run_id"]),
+        "driver_id": str(r["driver_id"]),
+        "status": r["status"],
+        "route_polyline": r["route_polyline"],
+        "origin_address": r["origin_address"],
+        "dest_address": r["dest_address"],
+        "origin": [float(r["origin_lat"] or 0), float(r["origin_lng"] or 0)],
+        "destination": [float(r["dest_lat"] or 0), float(r["dest_lng"] or 0)],
+        "ride_id": str(r["ride_id"]) if r.get("ride_id") else None,
+        "rider_id": str(r["rider_id"]) if r.get("rider_id") else None,
+        "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+    }
+
+
+_MAP_RUNS_SQL = """
+    SELECT dr.id AS run_id, dr.driver_id, dr.status::text AS status,
+           dr.route_polyline, dr.origin_address, dr.dest_address,
+           dr.created_at,
+           ST_Y(dr.origin_point::geometry) AS origin_lat,
+           ST_X(dr.origin_point::geometry) AS origin_lng,
+           ST_Y(dr.dest_point::geometry)   AS dest_lat,
+           ST_X(dr.dest_point::geometry)   AS dest_lng,
+           ra.ride_id, r.rider_id
+    FROM driver_runs dr
+    LEFT JOIN LATERAL (
+        SELECT ra2.ride_id
+        FROM ride_assignments ra2
+        WHERE ra2.driver_run_id = dr.id
+        ORDER BY ra2.assigned_at DESC LIMIT 1
+    ) ra ON true
+    LEFT JOIN rides r ON r.id = ra.ride_id
+    WHERE dr.route_polyline IS NOT NULL
+"""
+
+
+@router.get("/map-runs")
+async def map_runs(
+    _user=Depends(require_role("viewer")),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """All driver runs with polylines, categorised as active/completed/future."""
+    async with ka().acquire() as c:
+        active = await c.fetch(
+            _MAP_RUNS_SQL + " AND dr.status IN ('IN_PROGRESS', 'PARTIALLY_FILLED') "
+            "ORDER BY dr.created_at DESC LIMIT $1",
+            limit,
+        )
+        completed = await c.fetch(
+            _MAP_RUNS_SQL + " AND dr.status = 'COMPLETED' "
+            "ORDER BY dr.updated_at DESC LIMIT $1",
+            limit,
+        )
+        scheduled = await c.fetch(
+            _MAP_RUNS_SQL + " AND dr.status = 'OPEN' "
+            "ORDER BY dr.created_at ASC LIMIT $1",
+            limit,
+        )
+
+    return {
+        "active": [_run_row(r) for r in active],
+        "completed": [_run_row(r) for r in completed],
+        "scheduled": [_run_row(r) for r in scheduled],
+    }
