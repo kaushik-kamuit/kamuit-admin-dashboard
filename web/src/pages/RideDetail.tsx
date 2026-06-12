@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client";
@@ -5,6 +6,7 @@ import { datetime, money, shortId } from "../lib/format";
 import StatusBadge from "../components/StatusBadge";
 import { Map, Marker, Polyline, Popup } from "../components/MapView";
 import L from "leaflet";
+import { decodePolyline } from "../lib/polyline";
 
 const pickupIcon = L.divIcon({
   className: "",
@@ -140,26 +142,7 @@ export default function RideDetail() {
       </div>
 
       {ride.pickup_lat && ride.drop_lat && (
-        <div className="kpi-card">
-          <div className="kpi-label mb-3">Geography</div>
-          <Map
-            center={[ride.pickup_lat, ride.pickup_lng]}
-            zoom={12}
-            height={320}
-            bounds={[[ride.pickup_lat, ride.pickup_lng], [ride.drop_lat, ride.drop_lng]] as any}
-          >
-            <Marker position={[ride.pickup_lat, ride.pickup_lng]} icon={pickupIcon}>
-              <Popup><b>Pickup</b><br />{ride.pickup_address}</Popup>
-            </Marker>
-            <Marker position={[ride.drop_lat, ride.drop_lng]} icon={dropIcon}>
-              <Popup><b>Dropoff</b><br />{ride.drop_address}</Popup>
-            </Marker>
-            <Polyline
-              positions={[[ride.pickup_lat, ride.pickup_lng], [ride.drop_lat, ride.drop_lng]]}
-              pathOptions={{ color: "#64748b", weight: 2, dashArray: "4 6" }}
-            />
-          </Map>
-        </div>
+        <RideGeography ride={ride} assignment={assignment} />
       )}
 
       {tl && (
@@ -232,6 +215,57 @@ export default function RideDetail() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function RideGeography({ ride, assignment }: { ride: any; assignment: any }) {
+  const routePositions = useMemo<[number, number][]>(() => {
+    const polyline = assignment?.route_polyline;
+    if (polyline) {
+      try {
+        return decodePolyline(polyline);
+      } catch { /* ignore */ }
+    }
+    return [[ride.pickup_lat, ride.pickup_lng], [ride.drop_lat, ride.drop_lng]];
+  }, [assignment?.route_polyline, ride.pickup_lat, ride.pickup_lng, ride.drop_lat, ride.drop_lng]);
+
+  const hasRoute = !!assignment?.route_polyline;
+
+  const bounds = useMemo(() => {
+    const pts: [number, number][] = [
+      [ride.pickup_lat, ride.pickup_lng],
+      [ride.drop_lat, ride.drop_lng],
+      ...routePositions,
+    ];
+    return pts as any;
+  }, [ride.pickup_lat, ride.pickup_lng, ride.drop_lat, ride.drop_lng, routePositions]);
+
+  return (
+    <div className="kpi-card">
+      <div className="kpi-label mb-3">Geography</div>
+      <Map
+        center={[ride.pickup_lat, ride.pickup_lng]}
+        zoom={12}
+        height={320}
+        bounds={bounds}
+      >
+        <Marker position={[ride.pickup_lat, ride.pickup_lng]} icon={pickupIcon}>
+          <Popup><b>Pickup</b><br />{ride.pickup_address}</Popup>
+        </Marker>
+        <Marker position={[ride.drop_lat, ride.drop_lng]} icon={dropIcon}>
+          <Popup><b>Dropoff</b><br />{ride.drop_address}</Popup>
+        </Marker>
+        <Polyline
+          positions={routePositions}
+          pathOptions={{
+            color: hasRoute ? "#3b82f6" : "#64748b",
+            weight: hasRoute ? 3 : 2,
+            dashArray: hasRoute ? undefined : "4 6",
+            opacity: 0.8,
+          }}
+        />
+      </Map>
     </div>
   );
 }

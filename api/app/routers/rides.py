@@ -146,7 +146,8 @@ async def ride_detail(ride_id: UUID, _: str = Depends(require_admin)) -> dict:
             SELECT ra.id::text, ra.driver_run_id::text AS driver_run_id,
                    ra.assigned_at, ra.pickup_fraction, ra.drop_fraction,
                    ra.schedule_id::text AS schedule_id,
-                   dr.driver_id, dr.origin_address, dr.dest_address
+                   dr.driver_id, dr.origin_address, dr.dest_address,
+                   dr.route_polyline
             FROM ride_assignments ra
             JOIN driver_runs dr ON dr.id = ra.driver_run_id
             WHERE ra.ride_id = $1

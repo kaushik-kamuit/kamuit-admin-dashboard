@@ -88,6 +88,7 @@ async def live_ws(ws: WebSocket, token: str = Query(default="")):
         try:
             rows = await ka().fetch("""
                 SELECT dr.id AS run_id, dr.driver_id, dr.status,
+                       dr.route_polyline,
                        ST_Y(dr.origin_point::geometry) AS origin_lat,
                        ST_X(dr.origin_point::geometry) AS origin_lng,
                        ST_Y(dr.dest_point::geometry) AS dest_lat,
@@ -108,6 +109,7 @@ async def live_ws(ws: WebSocket, token: str = Query(default="")):
                     "run_id": str(r["run_id"]),
                     "driver_id": str(r["driver_id"]),
                     "status": r["status"],
+                    "route_polyline": r["route_polyline"],
                     "origin": [float(r["origin_lat"] or 0), float(r["origin_lng"] or 0)],
                     "destination": [float(r["dest_lat"] or 0), float(r["dest_lng"] or 0)],
                     "lat": float(r["lat"]) if r["lat"] else None,
@@ -134,6 +136,7 @@ async def active_runs(_user=Depends(require_role("viewer"))):
     """REST fallback for active run positions."""
     rows = await ka().fetch("""
         SELECT dr.id AS run_id, dr.driver_id, dr.status,
+               dr.route_polyline,
                ST_Y(dr.origin_point::geometry) AS origin_lat,
                ST_X(dr.origin_point::geometry) AS origin_lng,
                ST_Y(dr.dest_point::geometry) AS dest_lat,
@@ -152,6 +155,7 @@ async def active_runs(_user=Depends(require_role("viewer"))):
         "run_id": str(r["run_id"]),
         "driver_id": str(r["driver_id"]),
         "status": r["status"],
+        "route_polyline": r["route_polyline"],
         "origin": [float(r["origin_lat"] or 0), float(r["origin_lng"] or 0)],
         "destination": [float(r["dest_lat"] or 0), float(r["dest_lng"] or 0)],
         "lat": float(r["lat"]) if r["lat"] else None,

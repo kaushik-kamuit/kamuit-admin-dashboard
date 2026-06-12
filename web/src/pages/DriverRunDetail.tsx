@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { Map, Polyline, CircleMarker, Popup, Marker } from "../components/MapView";
 import { useMemo } from "react";
 import L from "leaflet";
+import { decodePolyline } from "../lib/polyline";
 
 const driverIcon = L.divIcon({
   className: "",
@@ -60,18 +61,28 @@ export default function DriverRunDetail() {
     [pings],
   );
 
+  const plannedRoute = useMemo<[number, number][]>(() => {
+    if (run?.route_polyline) {
+      try {
+        return decodePolyline(run.route_polyline);
+      } catch { /* ignore */ }
+    }
+    return [];
+  }, [run?.route_polyline]);
+
   const bounds = useMemo(() => {
     if (!run) return undefined;
     const pts: [number, number][] = [];
     if (run.origin_lat && run.origin_lng) pts.push([run.origin_lat, run.origin_lng]);
     if (run.dest_lat && run.dest_lng) pts.push([run.dest_lat, run.dest_lng]);
     for (const p of pathLatLngs) pts.push(p);
+    for (const p of plannedRoute) pts.push(p);
     for (const a of assignments) {
       if (a.pickup_lat) pts.push([a.pickup_lat, a.pickup_lng]);
       if (a.drop_lat) pts.push([a.drop_lat, a.drop_lng]);
     }
     return pts.length > 0 ? (pts as any) : undefined;
-  }, [run, pathLatLngs, assignments]);
+  }, [run, pathLatLngs, plannedRoute, assignments]);
 
   if (!run) return <div className="p-6">Loading...</div>;
 
@@ -117,6 +128,9 @@ export default function DriverRunDetail() {
               <Popup><b>Destination</b><br />{run.dest_address}</Popup>
             </Marker>
           )}
+          {plannedRoute.length > 1 && (
+            <Polyline positions={plannedRoute} pathOptions={{ color: "#94a3b8", weight: 4, opacity: 0.5, dashArray: pathLatLngs.length > 1 ? "6 4" : undefined }} />
+          )}
           {pathLatLngs.length > 1 && (
             <Polyline positions={pathLatLngs} pathOptions={{ color: "#2563eb", weight: 3, opacity: 0.9 }} />
           )}
@@ -160,7 +174,8 @@ export default function DriverRunDetail() {
           <LegendDot color="#ef4444" label="Run destination" />
           <LegendDot color="#f59e0b" label="Rider pickup" />
           <LegendDot color="#8b5cf6" label="Rider dropoff" />
-          <LegendDot color="#2563eb" label="Driver path" />
+          <LegendDot color="#94a3b8" label="Planned route" />
+          <LegendDot color="#2563eb" label="Actual GPS path" />
         </div>
       </div>
 

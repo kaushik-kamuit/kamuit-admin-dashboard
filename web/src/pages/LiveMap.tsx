@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { Map, CircleMarker, Polyline, Popup } from "../components/MapView";
 import type { LatLng } from "../components/MapView";
+import { decodePolyline } from "../lib/polyline";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -16,6 +17,7 @@ interface ActiveRun {
   status: RunStatus;
   origin: LatLng;
   destination: LatLng;
+  route_polyline: string | null;
   lat: number;
   lng: number;
   ts: string;
@@ -233,9 +235,20 @@ function RunMarkers({ run }: { run: ActiveRun }) {
   const color = STATUS_COLOR[run.status] ?? "#94a3b8";
   const lastPing = run.ts ? new Date(run.ts).toLocaleTimeString() : "—";
 
+  const routePositions = useMemo<LatLng[]>(() => {
+    if (run.route_polyline) {
+      try {
+        return decodePolyline(run.route_polyline);
+      } catch {
+        // fall through to straight-line fallback
+      }
+    }
+    return [run.origin, run.destination];
+  }, [run.route_polyline, run.origin, run.destination]);
+
   return (
     <>
-      {/* Origin diamond */}
+      {/* Origin marker */}
       <CircleMarker
         center={run.origin}
         radius={5}
@@ -246,7 +259,7 @@ function RunMarkers({ run }: { run: ActiveRun }) {
         </Popup>
       </CircleMarker>
 
-      {/* Destination diamond */}
+      {/* Destination marker */}
       <CircleMarker
         center={run.destination}
         radius={5}
@@ -257,10 +270,15 @@ function RunMarkers({ run }: { run: ActiveRun }) {
         </Popup>
       </CircleMarker>
 
-      {/* Dashed route line */}
+      {/* Actual route polyline (road-following when data exists, straight-line fallback) */}
       <Polyline
-        positions={[run.origin, run.destination]}
-        pathOptions={{ color: "#9ca3af", weight: 1.5, dashArray: "6 4" }}
+        positions={routePositions}
+        pathOptions={{
+          color: run.route_polyline ? "#3b82f6" : "#9ca3af",
+          weight: run.route_polyline ? 3 : 1.5,
+          dashArray: run.route_polyline ? undefined : "6 4",
+          opacity: 0.8,
+        }}
       />
 
       {/* Driver position */}
