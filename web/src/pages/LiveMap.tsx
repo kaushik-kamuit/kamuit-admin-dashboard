@@ -92,27 +92,9 @@ export default function LiveMap() {
     else navigate(`/driver-runs/${run.run_id}`);
   };
 
-  /* ── Live vehicle tracking ──────────────────────────────────── */
-  const activeRunsForSim = useMemo(
-    () =>
-      (data?.active ?? []).map((r) => ({
-        run_id: r.run_id,
-        driver_id: r.driver_id,
-        route_polyline: r.route_polyline,
-        origin: r.origin as [number, number],
-        destination: r.destination as [number, number],
-      })),
-    [data?.active],
-  );
-
-  const vehicles = useLiveVehicles(activeRunsForSim);
-
+  /* ── Live vehicle tracking (real pings only) ─────────────────── */
+  const vehicles = useLiveVehicles();
   const vehicleCount = vehicles.size;
-  const simCount = useMemo(
-    () => [...vehicles.values()].filter((v) => v.source === "sim").length,
-    [vehicles],
-  );
-  const liveCount = vehicleCount - simCount;
 
   return (
     <div className="space-y-4">
@@ -168,8 +150,7 @@ export default function LiveMap() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
               <span className="text-green-600 font-medium">
-                {vehicleCount} vehicle{vehicleCount !== 1 ? "s" : ""}
-                {liveCount > 0 && <> ({liveCount} live)</>}
+                {vehicleCount} live vehicle{vehicleCount !== 1 ? "s" : ""}
               </span>
             </span>
           )}
@@ -208,7 +189,7 @@ export default function LiveMap() {
                   <div className="text-xs space-y-1 min-w-[160px]">
                     <div className="font-semibold flex items-center gap-1.5">
                       <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                      {v.source === "ws" ? "Live" : "Simulated"}
+                      Live tracking
                     </div>
                     <div>
                       <span className="text-slate-400">Run </span>
