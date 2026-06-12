@@ -129,10 +129,10 @@ export default function DriverRunDetail() {
             </Marker>
           )}
           {plannedRoute.length > 1 && (
-            <Polyline positions={plannedRoute} pathOptions={{ color: "#94a3b8", weight: 4, opacity: 0.5, dashArray: pathLatLngs.length > 1 ? "6 4" : undefined }} />
+            <Polyline positions={plannedRoute} pathOptions={{ color: "#6366f1", weight: 5, opacity: 0.85 }} />
           )}
           {pathLatLngs.length > 1 && (
-            <Polyline positions={pathLatLngs} pathOptions={{ color: "#2563eb", weight: 3, opacity: 0.9 }} />
+            <Polyline positions={pathLatLngs} pathOptions={{ color: "#22d3ee", weight: 3, opacity: 0.7, dashArray: "6 4" }} />
           )}
           {assignments.map((a: any) => (
             <span key={a.id}>
@@ -174,8 +174,8 @@ export default function DriverRunDetail() {
           <LegendDot color="#ef4444" label="Run destination" />
           <LegendDot color="#f59e0b" label="Rider pickup" />
           <LegendDot color="#8b5cf6" label="Rider dropoff" />
-          <LegendDot color="#94a3b8" label="Planned route" />
-          <LegendDot color="#2563eb" label="Actual GPS path" />
+          <LegendDot color="#6366f1" label="Planned route" />
+          <LegendDot color="#22d3ee" label="Actual GPS path" />
         </div>
       </div>
 

@@ -259,10 +259,10 @@ function RideGeography({ ride, assignment }: { ride: any; assignment: any }) {
         <Polyline
           positions={routePositions}
           pathOptions={{
-            color: hasRoute ? "#3b82f6" : "#64748b",
-            weight: hasRoute ? 3 : 2,
+            color: hasRoute ? "#6366f1" : "#64748b",
+            weight: hasRoute ? 5 : 2,
             dashArray: hasRoute ? undefined : "4 6",
-            opacity: 0.8,
+            opacity: hasRoute ? 0.85 : 0.6,
           }}
         />
       </Map>

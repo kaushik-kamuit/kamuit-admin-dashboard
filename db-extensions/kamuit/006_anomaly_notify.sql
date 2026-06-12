@@ -9,6 +9,9 @@ BEGIN
         'driver_id',     NEW.driver_id,
         'lat',           NEW.latitude,
         'lng',           NEW.longitude,
+        'heading',       NEW.heading,
+        'speed_mps',     NEW.speed_mps,
+        'route_fraction',NEW.route_fraction,
         'ts',            NEW.recorded_at
     )::text);
     RETURN NEW;

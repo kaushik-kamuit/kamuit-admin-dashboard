@@ -93,10 +93,13 @@ async def live_ws(ws: WebSocket, token: str = Query(default="")):
                        ST_X(dr.origin_point::geometry) AS origin_lng,
                        ST_Y(dr.dest_point::geometry) AS dest_lat,
                        ST_X(dr.dest_point::geometry) AS dest_lng,
-                       p.latitude AS lat, p.longitude AS lng, p.recorded_at
+                       p.latitude AS lat, p.longitude AS lng,
+                       p.heading, p.speed_mps, p.route_fraction,
+                       p.recorded_at
                 FROM driver_runs dr
                 LEFT JOIN LATERAL (
-                    SELECT dlp.latitude, dlp.longitude, dlp.recorded_at
+                    SELECT dlp.latitude, dlp.longitude, dlp.heading,
+                           dlp.speed_mps, dlp.route_fraction, dlp.recorded_at
                     FROM driver_location_pings dlp
                     WHERE dlp.driver_run_id = dr.id
                     ORDER BY dlp.recorded_at DESC LIMIT 1
@@ -114,6 +117,9 @@ async def live_ws(ws: WebSocket, token: str = Query(default="")):
                     "destination": [float(r["dest_lat"] or 0), float(r["dest_lng"] or 0)],
                     "lat": float(r["lat"]) if r["lat"] else None,
                     "lng": float(r["lng"]) if r["lng"] else None,
+                    "heading": float(r["heading"]) if r["heading"] else None,
+                    "speed_mps": float(r["speed_mps"]) if r["speed_mps"] else None,
+                    "route_fraction": float(r["route_fraction"]) if r["route_fraction"] else None,
                     "ts": r["recorded_at"].isoformat() if r["recorded_at"] else None,
                 } for r in rows],
             }))
@@ -141,10 +147,13 @@ async def active_runs(_user=Depends(require_role("viewer"))):
                ST_X(dr.origin_point::geometry) AS origin_lng,
                ST_Y(dr.dest_point::geometry) AS dest_lat,
                ST_X(dr.dest_point::geometry) AS dest_lng,
-               p.latitude AS lat, p.longitude AS lng, p.recorded_at
+               p.latitude AS lat, p.longitude AS lng,
+               p.heading, p.speed_mps, p.route_fraction,
+               p.recorded_at
         FROM driver_runs dr
         LEFT JOIN LATERAL (
-            SELECT dlp.latitude, dlp.longitude, dlp.recorded_at
+            SELECT dlp.latitude, dlp.longitude, dlp.heading,
+                   dlp.speed_mps, dlp.route_fraction, dlp.recorded_at
             FROM driver_location_pings dlp
             WHERE dlp.driver_run_id = dr.id
             ORDER BY dlp.recorded_at DESC LIMIT 1
@@ -160,6 +169,9 @@ async def active_runs(_user=Depends(require_role("viewer"))):
         "destination": [float(r["dest_lat"] or 0), float(r["dest_lng"] or 0)],
         "lat": float(r["lat"]) if r["lat"] else None,
         "lng": float(r["lng"]) if r["lng"] else None,
+        "heading": float(r["heading"]) if r["heading"] else None,
+        "speed_mps": float(r["speed_mps"]) if r["speed_mps"] else None,
+        "route_fraction": float(r["route_fraction"]) if r["route_fraction"] else None,
         "ts": r["recorded_at"].isoformat() if r["recorded_at"] else None,
     } for r in rows]
 

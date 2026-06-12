@@ -5,6 +5,8 @@ import { api } from "../api/client";
 import { Map, CircleMarker, Polyline, Popup } from "../components/MapView";
 import type { LatLng } from "../components/MapView";
 import { decodePolyline } from "../lib/polyline";
+import { useLiveVehicles } from "../hooks/useLiveVehicles";
+import CarMarker from "../components/CarMarker";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -90,6 +92,28 @@ export default function LiveMap() {
     else navigate(`/driver-runs/${run.run_id}`);
   };
 
+  /* ── Live vehicle tracking ──────────────────────────────────── */
+  const activeRunsForSim = useMemo(
+    () =>
+      (data?.active ?? []).map((r) => ({
+        run_id: r.run_id,
+        driver_id: r.driver_id,
+        route_polyline: r.route_polyline,
+        origin: r.origin as [number, number],
+        destination: r.destination as [number, number],
+      })),
+    [data?.active],
+  );
+
+  const vehicles = useLiveVehicles(activeRunsForSim);
+
+  const vehicleCount = vehicles.size;
+  const simCount = useMemo(
+    () => [...vehicles.values()].filter((v) => v.source === "sim").length,
+    [vehicles],
+  );
+  const liveCount = vehicleCount - simCount;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -136,7 +160,19 @@ export default function LiveMap() {
           );
         })}
 
-        <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+        <div className="ml-auto flex items-center gap-3 text-xs text-slate-400">
+          {vehicleCount > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+              </span>
+              <span className="text-green-600 font-medium">
+                {vehicleCount} vehicle{vehicleCount !== 1 ? "s" : ""}
+                {liveCount > 0 && <> ({liveCount} live)</>}
+              </span>
+            </span>
+          )}
           {isLoading && (
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
           )}
@@ -157,6 +193,40 @@ export default function LiveMap() {
               onClick={() => goToRun(run)}
             />
           ))}
+
+          {/* Live vehicle markers */}
+          {[...vehicles.values()].map((v) => {
+            const run = data?.active?.find((r) => r.run_id === v.runId);
+            return (
+              <CarMarker
+                key={`car-${v.runId}`}
+                position={[v.lat, v.lng]}
+                heading={v.heading}
+                onClick={() => run && goToRun(run)}
+              >
+                <Popup>
+                  <div className="text-xs space-y-1 min-w-[160px]">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                      {v.source === "ws" ? "Live" : "Simulated"}
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Run </span>
+                      <span className="font-mono">{v.runId.slice(0, 8)}...</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Speed </span>
+                      {(v.speed * 3.6).toFixed(0)} km/h
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Heading </span>
+                      {v.heading.toFixed(0)}°
+                    </div>
+                  </div>
+                </Popup>
+              </CarMarker>
+            );
+          })}
         </Map>
 
         {/* Legend overlay */}
@@ -180,6 +250,10 @@ export default function LiveMap() {
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <span className="inline-block h-2 w-2 rounded-full bg-slate-700" />
               Origin / Destination
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span className="inline-block h-3 w-3 rounded-sm bg-green-500" />
+              Active vehicle
             </div>
           </div>
         </div>
