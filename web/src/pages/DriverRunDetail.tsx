@@ -32,6 +32,12 @@ const dropoffIcon = L.divIcon({
   iconSize: [10, 10],
 });
 
+function routeChoiceLabel(run: any): string {
+  if (run?.selected_route_alternative_index == null) return "legacy/default";
+  if (run.selected_route_alternative_index === 0) return "default route";
+  return `alternative ${run.selected_route_alternative_index + 1}`;
+}
+
 export default function DriverRunDetail() {
   const { id } = useParams<{ id: string }>();
 
@@ -100,11 +106,15 @@ export default function DriverRunDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 text-sm">
+      <div className="grid grid-cols-5 gap-4 text-sm">
         <Stat label="Status" value={run.status} />
         <Stat label="Seats" value={`${run.seats_left} / ${run.seats_total}`} />
         <Stat label="Route distance" value={fmtMeters(run.route_distance_meters)} />
         <Stat label="Route duration" value={fmtSeconds(run.route_duration_seconds)} />
+        <Stat
+          label="Route choice"
+          value={`${run.selected_route_summary || "Google default"} (${routeChoiceLabel(run)})`}
+        />
       </div>
 
       <div className="bg-white rounded shadow-sm p-4">
