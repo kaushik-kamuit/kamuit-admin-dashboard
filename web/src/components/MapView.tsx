@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, Rectangle } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, Rectangle, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
@@ -54,4 +54,4 @@ export function Map({
   );
 }
 
-export { Polyline, Marker, CircleMarker, Popup, Rectangle };
+export { Polyline, Marker, CircleMarker, Popup, Rectangle, Tooltip };

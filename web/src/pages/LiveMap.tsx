@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { Map, CircleMarker, Polyline, Popup } from "../components/MapView";
+import { Map, CircleMarker, Polyline, Popup, Tooltip } from "../components/MapView";
 import type { LatLng } from "../components/MapView";
 import { decodePolyline } from "../lib/polyline";
 import { useLiveVehicles } from "../hooks/useLiveVehicles";
@@ -124,10 +124,22 @@ const MARKETS: Market[] = [
 
 const DEFAULT_MARKET_ID: MarketId = "college-station";
 
-const CATEGORY_CONFIG: Record<RunCategory, { label: string; color: string }> = {
-  active: { label: "Active", color: "#22c55e" },
-  completed: { label: "Completed", color: "#6366f1" },
-  scheduled: { label: "Scheduled", color: "#f59e0b" },
+const CATEGORY_CONFIG: Record<RunCategory, { label: string; color: string; tooltip: string }> = {
+  active: {
+    label: "Active",
+    color: "#22c55e",
+    tooltip: "Trips currently in progress or partially filled.",
+  },
+  completed: {
+    label: "Completed",
+    color: "#6366f1",
+    tooltip: "Recently completed driver routes.",
+  },
+  scheduled: {
+    label: "Scheduled",
+    color: "#f59e0b",
+    tooltip: "Open driver runs scheduled for pickup.",
+  },
 };
 
 const POLL_INTERVAL = 15_000;
@@ -246,6 +258,7 @@ export default function LiveMap() {
                 key={market.id}
                 type="button"
                 onClick={() => setSelectedMarketId(market.id)}
+                title={`Move map to ${market.label} and filter visible routes to this market.`}
                 className={`
                   rounded border px-3 py-1.5 text-sm font-medium transition-colors
                   ${active
@@ -270,6 +283,7 @@ export default function LiveMap() {
               key={cat}
               type="button"
               onClick={() => toggle(cat)}
+              title={`${on ? "Hide" : "Show"} ${cfg.label.toLowerCase()} routes. ${cfg.tooltip}`}
               className={`
                 flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-all
                 ${on
@@ -340,6 +354,12 @@ export default function LiveMap() {
                 heading={v.heading}
                 onClick={() => run && goToRun(run)}
               >
+                <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>
+                  <MapTooltip title="Live vehicle">
+                    <div>Run {v.runId.slice(0, 8)}...</div>
+                    <div>{(v.speed * 3.6).toFixed(0)} km/h / {v.heading.toFixed(0)} deg</div>
+                  </MapTooltip>
+                </Tooltip>
                 <Popup>
                   <div className="min-w-[160px] space-y-1 text-xs">
                     <div className="flex items-center gap-1.5 font-semibold">
@@ -373,23 +393,23 @@ export default function LiveMap() {
             {(["active", "completed", "scheduled"] as RunCategory[]).map((cat) => {
               const cfg = CATEGORY_CONFIG[cat];
               return (
-                <div key={cat} className="flex items-center gap-2 text-xs text-slate-600">
+                <LegendItem key={cat} tip={cfg.tooltip}>
                   <span
                     className="inline-block h-[3px] w-5 rounded"
                     style={{ backgroundColor: cfg.color, opacity: 0.7 }}
                   />
                   {cfg.label} routes
-                </div>
+                </LegendItem>
               );
             })}
-            <div className="flex items-center gap-2 text-xs text-slate-600">
+            <LegendItem tip="Small endpoint dots show where a route begins and ends. Click either dot to open details.">
               <span className="inline-block h-2 w-2 rounded-full bg-slate-700" />
               Origin / destination
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-600">
+            </LegendItem>
+            <LegendItem tip="Animated car markers come from live driver location pings when available.">
               <span className="inline-block h-3 w-3 rounded-sm bg-green-500" />
               Active vehicle
-            </div>
+            </LegendItem>
           </div>
         </div>
       </div>
@@ -452,6 +472,8 @@ function RouteLayer({
     </div>
   );
 
+  const tooltipTitle = `${CATEGORY_CONFIG[category].label} route`;
+
   return (
     <>
       <Polyline
@@ -465,6 +487,13 @@ function RouteLayer({
         }}
         eventHandlers={{ click: onClick }}
       >
+        <Tooltip sticky opacity={0.95}>
+          <MapTooltip title={tooltipTitle}>
+            <div>{run.origin_address || "Origin unavailable"}</div>
+            <div>to {run.dest_address || "destination unavailable"}</div>
+            <div>Run {run.run_id.slice(0, 8)}...</div>
+          </MapTooltip>
+        </Tooltip>
         <Popup>{popupContent}</Popup>
       </Polyline>
 
@@ -479,6 +508,12 @@ function RouteLayer({
         }}
         eventHandlers={{ click: onClick }}
       >
+        <Tooltip direction="top" opacity={0.95}>
+          <MapTooltip title="Route origin">
+            <div>{run.origin_address || "Origin unavailable"}</div>
+            <div>Click to open run details.</div>
+          </MapTooltip>
+        </Tooltip>
         <Popup>
           <div className="space-y-1 text-xs">
             <div className="font-semibold">Origin</div>
@@ -499,6 +534,12 @@ function RouteLayer({
         }}
         eventHandlers={{ click: onClick }}
       >
+        <Tooltip direction="top" opacity={0.95}>
+          <MapTooltip title="Route destination">
+            <div>{run.dest_address || "Destination unavailable"}</div>
+            <div>Click to open run details.</div>
+          </MapTooltip>
+        </Tooltip>
         <Popup>
           <div className="space-y-1 text-xs">
             <div className="font-semibold">Destination</div>
@@ -508,6 +549,29 @@ function RouteLayer({
         </Popup>
       </CircleMarker>
     </>
+  );
+}
+
+function LegendItem({ children, tip }: { children: React.ReactNode; tip: string }) {
+  return (
+    <div
+      className="group relative flex cursor-help items-center gap-2 text-xs text-slate-600"
+      title={tip}
+    >
+      {children}
+      <span className="pointer-events-none absolute bottom-full left-0 mb-1 hidden w-56 rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px] leading-4 text-slate-600 shadow-sm group-hover:block">
+        {tip}
+      </span>
+    </div>
+  );
+}
+
+function MapTooltip({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="max-w-64 space-y-0.5 text-xs">
+      <div className="font-semibold text-slate-900">{title}</div>
+      <div className="text-slate-600">{children}</div>
+    </div>
   );
 }
 
